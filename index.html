@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Bootstrap -->
+<link href="css/bootstrap-3.3.4.css" rel="stylesheet" type="text/css">
+<script src="js/jquery-3.1.0.js"></script>
+<script src="js/bootstrap-3.3.4.js" type="text/javascript"></script>
+<script src="js/Chart.min.js"></script>
+<!--
+  Author:  Zhizhou Li <lzz@meteroi.com>
+ 
+  Copyright 2016 Meteroi
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+<title>Opnefpgaduino Blockly IDE</title>
+<script src="blockly/blockly_compressed.js"></script>
+<script src="blockly/blocks_compressed.js"></script>
+<script src="blockly/javascript_compressed.js"></script>
+<script src="blockly/demos/interpreter/acorn_interpreter.js"></script>
+<script src="js/debug.js"></script>
+<script src="js/util.js"></script>
+<script src="js/toolbox/toolbox.js"></script>
+<script src="js/language/language.js"></script>
+<script src="js/ajax.js"></script>
+<script src="js/blockly.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/log.js"></script>
+<script src="js/interpreter.js"></script>
+<script src="js/main.js"></script>
+<!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+<!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+<![endif]-->
+</head>
+<body>
+<!--<img id=broadpic alt="">-->
+<div class="container-fluid">
+  <div class="row-fluid" id="menuBar">
+        <a id="textSave" href="#savedialog" role="button" class="btn btn-default" data-toggle="modal"></a>
+        <span id="textRun" onclick="run()" class="btn btn-success"></span>
+        <span id="textStop" onclick="stop()" class="btn btn-warning" ></span>
+        <span id="textStep" onclick="step()" class="btn btn-danger" ></span>
+        <a id="textDoc" href="docs/index.html" role="button" class="btn btn-info" data-toggle="modal"></a>
+        <span id="textReboot" onclick="reboot()" class="btn btn-danger"></span>
+        <span>
+        <div class="btn-group">
+        <button id= "textConf" type="button" class="btn btn-primary"></button>
+        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+            <span class="caret"></span>
+        </button>
+        <ul id=version_list class="dropdown-menu" role="menu"></ul>
+        <span id="textFPGA" onclick="fpga()" class="btn btn-info"></span>
+        </div>
+        </span>
+        <select id="languageMenu"></select>
+  </div>
+  <div class="row-fluid">
+   <div class="col-md-8">
+     <div id="blocklyDiv" style="height: 400px;"></div>
+     <div id=Ex></div>
+   </div>
+   <div class="col-md-4"><div class="panel panel-default">
+      <canvas id="myChart" width="400" height="400"></canvas>  
+      </div>
+   </div>
+  </div>
+  </div>
+  <div class="row-fluid">
+   <div class="col-md-6">
+        <span id="textClearConsole" onclick="log.console.clean()" class="btn btn-warning"></span>
+        <div class="accordion-heading">
+        <a data-toggle="collapse" data-parent="#accordion" href="#console">
+        <div class="alert alert-info" role="alert">
+        <b id="textConsole"></b>
+        </div>
+        </a>
+        </div>
+        <div id="console" class="panel-collapse collapse in">
+        </div>
+
+   </div>
+   <div class="col-md-6">
+      <span id="textClearError" onclick="log.error.clean()" class="btn btn-warning"></span>
+      <div class="accordion-heading">
+        <a data-toggle="collapse" data-parent="#accordion" href="#error">
+          <div class="alert alert-danger" role="alert">
+          <b id="textError"></b>
+          </div>
+        </a>
+      </div>
+      <div id="error" class="panel-collapse collapse in">
+      </div>
+    </div>
+
+       
+  </div>
+  </div>
+</div>
+
+<!-- Save file dialog -->
+<div class="modal fade" id="savedialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h3 id="testSaveProgram"></h3>
+    </div>
+    <div class="modal-body">
+        <div class="input-group">
+            <input id="dialog_filename" type="text" class="form-control" placeholder="filename">
+            <span class="input-group-addon">.xml</span>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a id="textPopClose" href="#" data-dismiss="modal" class="btn"></a>
+        <a id="textPopSave" href="#" data-dismiss="modal" class="btn btn-primary" onclick="save()"></a>
+    </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div>
+
+<!-- pop dialog -->
+<div class="modal fade" id="popdialog">
+    <div class="modal-content">
+    <div class="modal-header">
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h3 id="testSureToDelete"></h3>
+    </div>
+    <div class="modal-body">
+        <div class="input-group">
+            <p id="pop_message"></p>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a id="textNo" href="#" data-dismiss="modal" class="btn"></a>
+        <a id="textYes"  href="#" data-dismiss="modal" class="btn btn-primary" onclick="do_delete_example()"></a>
+    </div>
+   </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div>
+
+ <!-- Blockly toolbox -->
+  <xml id="toolbox" style="display: none">
+    <category id="catLogic" colour="210">
+      <block type="controls_if"></block>
+      <block type="logic_compare"></block>
+      <block type="logic_operation"></block>
+      <block type="logic_negate"></block>
+      <block type="logic_boolean"></block>
+      <block type="logic_null"></block>
+      <block type="logic_ternary"></block>
+    </category>
+    <category id="catLoops" colour="120">
+      <block type="wait">
+        <value name="seconds">
+          <shadow type="math_number">
+            <title name="NUM">1</title>
+          </shadow>
+        </value>
+      </block>  
+      <block type="controls_repeat_ext">
+        <value name="TIMES">
+          <shadow type="math_number">
+            <field name="NUM">10</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="controls_whileUntil"></block>
+      <block type="controls_for">
+        <value name="FROM">
+          <shadow type="math_number">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+        <value name="TO">
+          <shadow type="math_number">
+            <field name="NUM">10</field>
+          </shadow>
+        </value>
+        <value name="BY">
+          <shadow type="math_number">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="controls_forEach"></block>
+      <block type="controls_flow_statements"></block>
+    </category>    
+    <category id="catMath" colour="230">
+  <block type="math_number"></block>
+      <block type="math_arithmetic">
+        <value name="A">
+          <shadow type="math_number">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+        <value name="B">
+          <shadow type="math_number">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_single">
+        <value name="NUM">
+          <shadow type="math_number">
+            <field name="NUM">9</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_trig">
+        <value name="NUM">
+          <shadow type="math_number">
+            <field name="NUM">45</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_constant"></block>
+      <block type="math_number_property">
+        <value name="NUMBER_TO_CHECK">
+          <shadow type="math_number">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_change">
+        <value name="DELTA">
+          <shadow type="math_number">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_round">
+        <value name="NUM">
+          <shadow type="math_number">
+            <field name="NUM">3.1</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_on_list"></block>
+      <block type="math_modulo">
+        <value name="DIVIDEND">
+          <shadow type="math_number">
+            <field name="NUM">64</field>
+          </shadow>
+        </value>
+        <value name="DIVISOR">
+          <shadow type="math_number">
+            <field name="NUM">10</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_constrain">
+        <value name="VALUE">
+          <shadow type="math_number">
+            <field name="NUM">50</field>
+          </shadow>
+        </value>
+        <value name="LOW">
+          <shadow type="math_number">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+        <value name="HIGH">
+          <shadow type="math_number">
+            <field name="NUM">100</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_random_int">
+        <value name="FROM">
+          <shadow type="math_number">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+        <value name="TO">
+          <shadow type="math_number">
+            <field name="NUM">100</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_random_float"></block>
+    </category>
+    <category id="catText" colour="160">
+       <block type="console" inline="false">
+       <value name="Console">
+          <shadow type="text">
+            <field name="TEXT">Openfpgaduino</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="error" inline="false">
+       <value name="Error">
+          <shadow type="text">
+            <field name="TEXT">Openfpgaduino</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="text_print" inline="false">
+       <value name="TEXT">
+          <shadow type="text">
+            <field name="TEXT">Openfpgaduino</field>
+          </shadow>
+        </value>
+      </block>
+     <block type="text"></block>
+      <block type="text_join"></block>
+      <block type="text_append">
+        <value name="TEXT">
+          <shadow type="text"></shadow>
+        </value>
+      </block>
+      <block type="text_length">
+        <value name="VALUE">
+          <shadow type="text">
+            <field name="TEXT">abc</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="text_isEmpty">
+        <value name="VALUE">
+          <shadow type="text">
+            <field name="TEXT"></field>
+          </shadow>
+        </value>
+      </block>
+      <block type="text_indexOf">
+        <value name="VALUE">
+          <block type="variables_get">
+            <field name="VAR">text</field>
+          </block>
+        </value>
+        <value name="FIND">
+          <shadow type="text">
+            <field name="TEXT">abc</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="text_charAt">
+        <value name="VALUE">
+          <block type="variables_get">
+            <field name="VAR">text</field>
+          </block>
+        </value>
+      </block>
+      <block type="text_getSubstring">
+        <value name="STRING">
+          <block type="variables_get">
+            <field name="VAR">text</field>
+          </block>
+        </value>
+      </block>
+      <block type="text_changeCase">
+        <value name="TEXT">
+          <shadow type="text">
+            <field name="TEXT">abc</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="text_trim">
+        <value name="TEXT">
+          <shadow type="text">
+            <field name="TEXT">abc</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="text_prompt_ext">
+        <value name="TEXT">
+          <shadow type="text">
+            <field name="TEXT">abc</field>
+          </shadow>
+        </value>
+      </block>
+    </category>
+    <category id="catLists" colour="260">
+ 	  <block type="lists_create_with">
+        <mutation items="0"></mutation>
+      </block>
+      <block type="lists_create_with"></block>
+      <block type="lists_repeat">
+        <value name="NUM">
+          <shadow type="math_number">
+            <field name="NUM">5</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="lists_length"></block>
+      <block type="lists_isEmpty"></block>
+      <block type="lists_indexOf">
+        <value name="VALUE">
+          <block type="variables_get">
+            <field name="VAR">list</field>
+          </block>
+        </value>
+      </block>
+      <block type="lists_getIndex">
+        <value name="VALUE">
+          <block type="variables_get">
+            <field name="VAR">list</field>
+          </block>
+        </value>
+      </block>
+      <block type="lists_setIndex">
+        <value name="LIST">
+          <block type="variables_get">
+            <field name="VAR">list</field>
+          </block>
+        </value>
+      </block>
+      <block type="lists_getSublist">
+        <value name="LIST">
+          <block type="variables_get">
+            <field name="VAR">list</field>
+          </block>
+        </value>
+      </block>
+      <block type="lists_split">
+        <value name="DELIM">
+          <shadow type="text">
+            <field name="TEXT">,</field>
+          </shadow>
+        </value>
+      </block>
+    </category>
+    <category id="catColour" colour="20">
+      <block type="colour_picker"></block>
+      <block type="colour_random"></block>
+      <block type="colour_rgb">
+        <value name="RED">
+          <shadow type="math_number">
+            <field name="NUM">100</field>
+          </shadow>
+        </value>
+        <value name="GREEN">
+          <shadow type="math_number">
+            <field name="NUM">50</field>
+          </shadow>
+        </value>
+        <value name="BLUE">
+          <shadow type="math_number">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="colour_blend">
+        <value name="COLOUR1">
+          <shadow type="colour_picker">
+            <field name="COLOUR">#ff0000</field>
+          </shadow>
+        </value>
+        <value name="COLOUR2">
+          <shadow type="colour_picker">
+            <field name="COLOUR">#3333ff</field>
+          </shadow>
+        </value>
+        <value name="RATIO">
+          <shadow type="math_number">
+            <field name="NUM">0.5</field>
+          </shadow>
+        </value>
+      </block>
+    </category>
+    <category id="catVariables" colour="330" custom="VARIABLE"></category>
+    <category id="catFunctions" colour="290" custom="PROCEDURE"></category>
+    <sep></sep>
+    <category name="Openfpgaduino" colour="260">
+      <block type="led">
+          <value name="colour">
+          	<shadow type="colour_picker"></shadow>
+          </value>
+      </block>
+      <block type="rgb_led">
+        <value name="r">
+          <shadow type="math_number">
+            <title name="NUM">255</title>
+          </shadow>
+        </value>
+        <value name="g">
+          <shadow type="math_number">
+            <title name="NUM">255</title>
+          </shadow>
+        </value>
+        <value name="b">
+          <shadow type="math_number">
+            <title name="NUM">255</title>
+          </shadow>
+        </value>
+      </block>
+      <block type="temperature">
+        <value name="ID">
+          <shadow type="math_number">
+            <title name="NUM">1</title>
+          </shadow>
+        </value>
+      </block>
+      <block type="moisture">
+        <value name="ID">
+          <shadow type="math_number">
+            <title name="NUM">1</title>
+          </shadow>
+        </value>
+      </block>
+      <block type="analoginput">
+      </block>
+      <block type="analoginit">
+      </block>   
+      <block type="shield_init">
+      </block>  
+      <block type="digitaloutput">
+        <value name="ID">
+          <shadow type="math_number">
+            <title name="NUM">1</title>
+          </shadow>
+        </value>
+      </block> 
+      <block type="steering">
+          <value name="ID">
+          <shadow type="math_number">
+            <title name="NUM">1</title>
+          </shadow>
+          </value>
+      </block> 
+      <block type="stepmotor">
+          <value name="ID">
+          <shadow type="math_number">
+            <title name="NUM">1</title>
+          </shadow>
+        </value>
+          <value name="step">
+          <shadow type="math_number">
+            <title name="NUM">1</title>
+          </shadow>
+        </value>
+      </block> 
+    </category>
+    <category id="catChart" colour="60">
+       <block type="plot">
+      </block>  
+      <block type="plotxy">
+      </block>  
+       <block type="plotclean">
+      </block>  
+      <block type="plotpush">
+      </block>  
+    </category>
+  </xml>
+
+<xml id=startBlocks style="display: none">
+  <block type="controls_repeat_ext">
+    <value name="TIMES">
+      <shadow type="math_number">
+        <field name="NUM">5</field>
+      </shadow>
+    </value>
+    <statement name="DO">
+      <block type="console" inline="false">
+        <value name="Console">
+          <shadow type="text" >
+            <field name="TEXT">Openfpgaduino</field>
+          </shadow>
+        </value>
+      </block>
+    </statement>
+    <next>
+      <block type="plot">
+        <value name="Name">
+          <block type="text">
+            <field name="TEXT">Openfpgaduino</field>
+          </block>
+        </value>
+        <value name="y">
+          <block type="lists_split">
+            <mutation mode="SPLIT"></mutation>
+            <field name="MODE">SPLIT</field>
+            <value name="INPUT">
+              <block type="text">
+                <field name="TEXT">1,2,3,4,5</field>
+              </block>
+            </value>
+            <value name="DELIM">
+              <shadow type="text">
+                <field name="TEXT">,</field>
+              </shadow>
+            </value>
+          </block>
+        </value>
+        <value name="colour">
+          <block type="colour_picker">
+            <field name="COLOUR">#00cccc</field>
+          </block>
+        </value>
+      </block>
+    </next>
+  </block>
+</xml>
+</body>
+</html>
