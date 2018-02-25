@@ -7,7 +7,8 @@
     "requirejs": "2.1.14",
     "ace" : "*",
     "underscore": "*",
-    "collections": "*"
+    "collections": "*",
+    "monaco-editor-official": "*"
   },
   "devDependencies": {}
 }
